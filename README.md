@@ -1,0 +1,1 @@
+This Python script simulates the spheroidization process using numerical methods. It initializes a polygon-like shape, computes curvature effects, and updates the shape iteratively while enforcing volume conservation. The simulation is visualized using Matplotlib.
