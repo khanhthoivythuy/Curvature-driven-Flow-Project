@@ -1,0 +1,116 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.ndimage import laplace
+import csv
+
+def polygon_shape(shape):
+  shape[(x**2 + (y*1.2)**2 < 0.3**2)] = 1
+  shape[(x**2 + (y/1.5)**2 < 0.25**2)] = 1
+
+def visualization (shape):
+  plt.imshow(shape, cmap='gray', extent=[-1, 1, -1, 1])
+  plt.colorbar()
+  plt.axis("off")
+  plt.show()
+
+def find_optimal_thresold(shape):
+  threshold=0
+  deposition=0
+  erosion=0
+  dif = 1
+  while dif>0:
+    threshold = threshold + 0.0001
+    print (threshold)
+    for i in range(grid_size):
+      for j in range(grid_size):
+        if shape[i,j] >= threshold:
+          deposition=deposition+(1-shape[i,j])
+        else:
+          erosion=erosion+(shape[i,j])
+    dif = deposition-erosion
+    deposition=0
+    erosion=0
+return threshold
+
+def clearify_interface(shape)
+  count_1=0
+  deposition=0
+  erosion=0
+  threshold = find_optimal_thresold(shape)
+  print(f"Optimal threshold: {threshold}")
+  for i in range(grid_size):
+    for j in range(grid_size):
+      if shape[i,j] >= threshold:
+        deposition=deposition+(1-shape[i,j])
+        shape[i,j]=1
+        count_1=count_1+1
+      else:
+        erosion=erosion+(shape[i,j])
+        shape[i,j] = 0
+
+#Step 1: Input 
+# Parameters
+dt=0.0001
+grid_size = 200
+gamma = 30 # Curve tension
+#Read viscosity profile
+with open("viscosity_profile.csv", mode="r", newline="", encoding="utf-8") as file:
+  reader = csv.reader(file)
+  inp =[list(map(float,row))for row in reader]
+xx=[]
+yy=[]
+for i in range(len(inp)):
+  xx=np.append(xx, inp[i][0])
+  yy=np.append(yy, inp[i][1])
+#Find interpolation function
+inter = np.polyfit(xx, yy, 2)
+time_span=inp[len(inp)-1][0]
+substeps = time_span/dt
+
+# Step 2: Initialize an polygon-like shape
+x, y = np.meshgrid(np.linspace(-1, 1, grid_size), np.linspace(-1, 1, grid_size))
+shape = np.zeros((grid_size, grid_size))
+draw_shape = polygon_shape(shape)
+#Show the initial graph
+visualization(shape)
+
+# Step 3: Compute initial area
+initial_area = np.sum(shape)
+
+# Step 4: Simulation loop
+R_eff=10e-6*np.sqrt(initial_area/3.14)
+count=0
+for i in range(int(substeps+1)):
+
+  # Compute curvature (Laplacian as an approximation)
+  curvature = -laplace(shape)
+
+  # Compute Lagrange multiplier λ for volume conservation
+  lambda_term = np.sum(curvature) / np.sum(shape)
+
+  # Compute velocity update with area constraint
+  viscosity= inter[0]*(dt*(i+1))**2 + inter[1]*dt*(i+1) + inter[2]
+  velocity = -gamma * (curvature - lambda_term)*R_eff / viscosity 
+
+  # Update shape
+  shape += dt*velocity*10e6
+
+  # Normalize area to maintain constant material area
+  current_area = np.sum(shape)
+  shape *= initial_area / current_area # Rescale to enforce area conservation
+  count = count+1
+
+# Clearify the interface
+clearify_interface(shape)
+
+#Show the graph after spheroidization process
+visualization(shape)
+
+print(f"Current volume: {count_1}")
+print(f"Initial volume: {initial_volume}")
+print(f"Volume difference: {count_1-initial_volume}")
+print(f"deposition: {deposition}")
+print(f"erosion: {erosion}")
+print(f"Ero-depo difference: {deposition-erosion}")
+print("Simulation complete!")
+ 
